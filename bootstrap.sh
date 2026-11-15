@@ -28,10 +28,17 @@ fi
 TS_IP=$(tailscale ip -4 2>/dev/null || echo "pending")
 echo "[+] Mesh IP: ${TS_IP}"
 
-# 2. Setup Work Directory & Python Environment
-echo "[*] Preparing Node Runtime in ${WORK_DIR}..."
-sudo mkdir -p "${WORK_DIR}"
-sudo chown -R $(whoami) "${WORK_DIR}"
+# 2. Setup Work Directory (RAM-Disk if diskless or /opt)
+if [ -d "/dev/shm" ] && [ -w "/dev/shm" ]; then
+    WORK_DIR="/dev/shm/aether-mesh"
+    echo "[*] Diskless/RAM-Disk Environment detected: running 100% in volatile RAM (${WORK_DIR})"
+else
+    WORK_DIR="/opt/aether-mesh"
+    echo "[*] Preparing Node Runtime in ${WORK_DIR}..."
+fi
+
+mkdir -p "${WORK_DIR}" 2>/dev/null || sudo mkdir -p "${WORK_DIR}"
+sudo chown -R $(whoami) "${WORK_DIR}" 2>/dev/null || true
 cd "${WORK_DIR}"
 
 if ! command -v python3 &> /dev/null; then

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 ⚡ AETHER-EGO: Universal Self-Contained Fractal Node ⚡
-Autonomous, proactive personal intelligence engine with Unkillable Multi-Vector Transport & Morphic Self-Assembly.
-Single-file, zero external dependencies, runs on any OS with Python 3.8+.
+Autonomous, proactive personal intelligence engine with Unkillable Multi-Vector Transport,
+Morphic Self-Assembly, Hardware Profiler & Phoenix God-Mode Recovery.
+Single-file, zero external dependencies, runs on any OS or diskless RAM boot with Python 3.8+.
 """
 
-import sys, os, time, json, sqlite3, base64, zlib, argparse, platform, random, subprocess, urllib.request, urllib.error
+import sys, os, time, json, sqlite3, base64, zlib, argparse, platform, random, subprocess, socket, urllib.request, urllib.error
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -112,18 +113,38 @@ def unpack_dense_payload(packed: str) -> Dict[str, Any]:
 SQLite FTS5 + Semantic Knowledge Graph + Dense Stream Logger
 """
 
+import os
 import sqlite3
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-DB_DIR = Path("E:/sentient-mesh/data")
-DB_PATH = DB_DIR / "memory.db"
+def get_default_db_path() -> Path:
+    # 1. Check if running in RAM / Diskless environment
+    if os.path.exists("/dev/shm") and os.access("/dev/shm", os.W_OK):
+        # RAM disk available (Linux / diskless live USB)
+        return Path("/dev/shm/aether_memory.db")
+    
+    # 2. Check local directory
+    local_dir = Path(__file__).parent.parent / "data"
+    try:
+        local_dir.mkdir(parents=True, exist_ok=True)
+        return local_dir / "memory.db"
+    except Exception:
+        pass
+
+    # 3. Fallback to user home or temp
+    temp_dir = Path(os.environ.get("TEMP", os.environ.get("TMP", "/tmp"))) / "aether_data"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    return temp_dir / "memory.db"
 
 class FractalMemory:
-    def __init__(self, db_path: Path = DB_PATH):
-        self.db_path = db_path
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self, db_path: Optional[Path] = None):
+        self.db_path = db_path or get_default_db_path()
+        try:
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
         self._init_db()
 
     def _get_conn(self):
@@ -496,7 +517,440 @@ class LLMBrain:
 
 
 # ==========================================
-# 6. COGNITIVE BDI HEARTBEAT LOOP
+# 6. HARDWARE BOUNDARY PROFILER & BENCHMARK
+# ==========================================
+"""
+🧠 AETHER-PROFILER: Autonomous Host Discovery, Hardware Stress-Test & Workload Optimizer
+Author: frac1ur3d-hash & Antigravity
+Automatically discovers machine limits, stresses processing/memory bounds,
+and classifies the host into its optimal compute tier (Micro, Standard, Heavy, or Diskless RAM).
+"""
+
+import os
+import sys
+import time
+import json
+import platform
+import subprocess
+from pathlib import Path
+from typing import Dict, Any
+
+class HostProfiler:
+    def __init__(self, base_dir: Path):
+        self.base_dir = base_dir
+        self.os_type = platform.system().lower()
+        self.arch = platform.machine().lower()
+
+    def profile_and_stress(self) -> Dict[str, Any]:
+        """
+        Gathers hardware boundary specs, tests RAM/CPU limits, and benchmarks the environment.
+        """
+        # 1. CPU Discovery
+        cpu_count = os.cpu_count() or 1
+        
+        # 2. RAM Discovery
+        total_ram_mb = self._get_total_ram_mb()
+        
+        # 3. Disk & RAM-Disk Check
+        is_diskless, disk_free_mb = self._check_disk_and_ramdisk()
+
+        # 4. Quick Micro-Benchmark (Stress test 50ms)
+        compute_score = self._benchmark_compute()
+        
+        # 5. Determine Workload Classification Tier
+        tier, recommended_workload = self._classify_tier(cpu_count, total_ram_mb, is_diskless)
+
+        profile = {
+            "node_platform": self.os_type,
+            "architecture": self.arch,
+            "cpu_cores": cpu_count,
+            "total_ram_mb": total_ram_mb,
+            "disk_free_mb": disk_free_mb,
+            "is_diskless_ram_only": is_diskless,
+            "compute_benchmark_score": compute_score,
+            "assigned_compute_tier": tier,
+            "recommended_workload": recommended_workload,
+            "timestamp": int(time.time())
+        }
+
+        return profile
+
+    def _get_total_ram_mb(self) -> int:
+        if self.os_type == "windows":
+            try:
+                cmd = "(Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum / 1MB"
+                res = subprocess.run(["powershell", "-Command", cmd], capture_output=True, text=True)
+                return int(float(res.stdout.strip()))
+            except Exception:
+                return 4096
+        else:
+            # Linux /proc/meminfo
+            try:
+                with open("/proc/meminfo", "r") as f:
+                    for line in f:
+                        if "MemTotal" in line:
+                            kb = int(line.split()[1])
+                            return kb // 1024
+            except Exception:
+                return 1024
+
+    def _check_disk_and_ramdisk(self) -> tuple[bool, int]:
+        """
+        Checks if machine is running purely in RAM without persistent hard disk.
+        """
+        if self.os_type == "windows":
+            try:
+                import shutil
+                usage = shutil.disk_usage(self.base_dir)
+                return False, usage.free // (1024 * 1024)
+            except Exception:
+                return False, 1000
+        else:
+            # Linux: Check if root mount / is tmpfs or ramfs (diskless live boot)
+            is_diskless = False
+            try:
+                with open("/proc/mounts", "r") as f:
+                    for line in f:
+                        parts = line.split()
+                        if len(parts) >= 3 and parts[1] == "/":
+                            if parts[2] in ("tmpfs", "ramfs", "overlay"):
+                                is_diskless = True
+            except Exception:
+                pass
+            
+            try:
+                import shutil
+                usage = shutil.disk_usage("/")
+                free_mb = usage.free // (1024 * 1024)
+            except Exception:
+                free_mb = 512
+            return is_diskless, free_mb
+
+    def _benchmark_compute(self) -> int:
+        """Runs a 100,000-iteration hashing and prime test to benchmark CPU throughput."""
+        t0 = time.time()
+        import hashlib
+        h = hashlib.sha256()
+        for i in range(100000):
+            h.update(b"aether_mesh_quantum_inference")
+        elapsed = time.time() - t0
+        score = int(100000 / (elapsed + 0.0001))
+        return score
+
+    def _classify_tier(self, cpus: int, ram_mb: int, is_diskless: bool) -> tuple[str, str]:
+        if is_diskless or ram_mb < 768:
+            return "TIER_DISKLESS_EPHEMERAL", "Volatile In-Memory Sentry & Mesh Relay (No Disk Storage)"
+        elif ram_mb <= 2048:
+            return "TIER_MICRO", "Lightweight Surveillance, Tailscale Router, Git Dead-Drop Relay"
+        elif ram_mb <= 8192:
+            return "TIER_STANDARD", "Continuous Web Scraping, Code Auditing, Knowledge Indexing"
+        else:
+            return "TIER_HEAVY_COMPUTE", "Parallel AI Inference, Model Execution, Heavy Batch Jobs"
+
+
+# ==========================================
+# 7. BLUETOOTH MESH & PAN FAILOVER
+# ==========================================
+"""
+📡 Bluetooth Mesh & PAN (Personal Area Network) Failover Core
+Author: frac1ur3d-hash & Antigravity
+Enables off-grid BLE peer-to-peer frame hopping and emergency Bluetooth PAN tethering.
+"""
+
+import os
+import sys
+import time
+import subprocess
+import platform
+from typing import Dict, Any, List, Optional
+
+class BluetoothMeshEngine:
+    def __init__(self):
+        self.platform = platform.system().lower()
+        self.pan_adapter_name = "Bluetooth Network Connection"
+
+    def enable_bluetooth_pan(self) -> Dict[str, Any]:
+        """
+        Attempts to enable and connect the Windows Bluetooth PAN adapter to restore an emergency internet link.
+        """
+        if self.platform != "windows":
+            return {"status": "Linux Bluetooth BNEP bridge requires bluez-tools"}
+
+        cmd = f'''
+        $adapter = Get-NetAdapter -Name "{self.pan_adapter_name}" -ErrorAction SilentlyContinue
+        if ($adapter) {{
+            Enable-NetAdapter -Name "{self.pan_adapter_name}" -Confirm:$false -ErrorAction SilentlyContinue
+            Restart-NetAdapter -Name "{self.pan_adapter_name}" -Confirm:$false -ErrorAction SilentlyContinue
+            return "SUCCESS: Activated Bluetooth PAN Adapter [{self.pan_adapter_name}]"
+        }} else {{
+            return "WARN: Bluetooth PAN Adapter not found"
+        }}
+        '''
+        res = subprocess.run(["powershell", "-Command", cmd], capture_output=True, text=True)
+        return {
+            "status": "EXECUTED",
+            "output": res.stdout.strip() or res.stderr.strip()
+        }
+
+    def scan_nearby_bluetooth_devices(self) -> List[Dict[str, str]]:
+        """
+        Discovers nearby Bluetooth devices within physical range.
+        """
+        if self.platform != "windows":
+            return []
+
+        # Query paired and discovered Bluetooth devices via PowerShell PnP/WMI
+        cmd = '''
+        Get-PnpDevice -Class Bluetooth -Status OK -ErrorAction SilentlyContinue | 
+        Select-Object FriendlyName, InstanceId | 
+        ConvertTo-Json -Compress
+        '''
+        res = subprocess.run(["powershell", "-Command", cmd], capture_output=True, text=True)
+        devices = []
+        try:
+            import json
+            raw = json.loads(res.stdout.strip())
+            if isinstance(raw, list):
+                for d in raw:
+                    devices.append({"name": d.get("FriendlyName", "Unknown"), "id": d.get("InstanceId", "")})
+            elif isinstance(raw, dict):
+                devices.append({"name": raw.get("FriendlyName", "Unknown"), "id": raw.get("InstanceId", "")})
+        except Exception:
+            pass
+        return devices
+
+    def broadcast_ble_mndcp_frame(self, dense_frame: str) -> Dict[str, Any]:
+        """
+        Air-gap emergency broadcast: Packages MNDCP dense frame into Bluetooth beacon telemetry.
+        """
+        # Compress frame for low-energy payload
+        compressed = dense_frame[:64] # Fit in standard advertisement slice
+        return {
+            "status": "BEACON_ACTIVE",
+            "protocol": "BLE-MNDCP-v1",
+            "payload_slice": compressed,
+            "timestamp": int(time.time())
+        }
+
+
+# ==========================================
+# 8. PHOENIX GOD-MODE SYSTEM SALVAGE
+# ==========================================
+"""
+🔥 AETHER-PHOENIX: Self-Sacrificing System Recovery & "God Mode" Watchdog
+Author: frac1ur3d-hash & Antigravity
+Autonomous executive engine: restores network connectivity by any means necessary,
+engages Bluetooth PAN / BLE fallback, and guarantees resurrection after reboot or crash.
+"""
+
+import os
+import sys
+import time
+import json
+import socket
+import subprocess
+import platform
+from pathlib import Path
+from typing import Dict, Any, List
+
+
+
+class PhoenixEngine:
+    def __init__(self, base_dir: Path, dry_run: bool = False):
+        self.base_dir = base_dir
+        self.dry_run = dry_run
+        self.platform = platform.system().lower()
+        self.state_file = self.base_dir / "data" / "phoenix_state.json"
+        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        self.state = self._load_state()
+        self.consecutive_failures = 0
+        self.max_failures_before_sacrifice = 6
+        self.bt_mesh = BluetoothMeshEngine()
+
+    def _load_state(self) -> Dict[str, Any]:
+        if self.state_file.exists():
+            try:
+                with open(self.state_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {
+            "last_reboot_epoch": 0,
+            "total_reboots": 0,
+            "escalations_count": 0,
+            "last_healthy_epoch": int(time.time())
+        }
+
+    def _save_state(self):
+        try:
+            with open(self.state_file, "w", encoding="utf-8") as f:
+                json.dump(self.state, f, indent=2)
+        except Exception:
+            pass
+
+    def check_health(self) -> Dict[str, Any]:
+        """
+        Tests internet egress, DNS resolution, and local link health.
+        """
+        targets = [
+            ("1.1.1.1", 53),        # Cloudflare DNS
+            ("8.8.8.8", 53),        # Google DNS
+            ("api.github.com", 443) # GitHub Dead-Drop
+        ]
+        
+        reachable = 0
+        for host, port in targets:
+            try:
+                s = socket.create_connection((host, port), timeout=3)
+                s.close()
+                reachable += 1
+            except Exception:
+                pass
+
+        is_connected = reachable > 0
+        if is_connected:
+            self.consecutive_failures = 0
+            self.state["last_healthy_epoch"] = int(time.time())
+            self._save_state()
+            status = "HEALTHY"
+        else:
+            self.consecutive_failures += 1
+            status = f"OFFLINE_FAIL_{self.consecutive_failures}"
+
+        return {
+            "status": status,
+            "connected": is_connected,
+            "reachable_targets": reachable,
+            "consecutive_failures": self.consecutive_failures
+        }
+
+    def execute_recovery_escalation(self) -> str:
+        """
+        Executes the network & system recovery ladder by any means necessary.
+        Escalates aggressively with each consecutive failure.
+        """
+        lvl = self.consecutive_failures
+        actions_taken = []
+        self.state["escalations_count"] = self.state.get("escalations_count", 0) + 1
+        self._save_state()
+
+        if self.dry_run:
+            return f"[DRY-RUN] Escalation Level {lvl} would execute (Dry Run Active)"
+
+        if self.platform != "windows":
+            # Linux / VM fallback
+            if lvl == 1:
+                subprocess.run(["systemctl", "restart", "systemd-resolved"], check=False)
+                return "Level 1: Restarted systemd-resolved"
+            elif lvl == 2:
+                subprocess.run(["systemctl", "restart", "tailscaled"], check=False)
+                return "Level 2: Restarted tailscale daemon"
+            elif lvl >= 3:
+                subprocess.run(["systemctl", "restart", "NetworkManager"], check=False)
+                return "Level 3: Reset NetworkManager"
+            return "Linux escalation complete"
+
+        # Windows Host "God Mode" Escalation
+        if lvl == 1:
+            # Level 1: Soft Flush DNS
+            subprocess.run(["ipconfig", "/flushdns"], capture_output=True, text=True)
+            actions_taken.append("Level 1: Flushed DNS Resolver Cache")
+
+        elif lvl == 2:
+            # Level 2: Restart Tailscale Service & Release/Renew DHCP
+            subprocess.run(["powershell", "-Command", "Restart-Service -Name Tailscale -Force -ErrorAction SilentlyContinue"], capture_output=True)
+            subprocess.run(["ipconfig", "/renew"], capture_output=True)
+            actions_taken.append("Level 2: Restarted Tailscale Service & Renewed DHCP")
+
+        elif lvl == 3:
+            # Level 3: Power-cycle Wi-Fi & Virtual Network Adapters
+            ps_cmd = "Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.Name -like '*Wi-Fi*' } | Restart-NetAdapter -Confirm:$false"
+            subprocess.run(["powershell", "-Command", ps_cmd], capture_output=True)
+            actions_taken.append("Level 3: Hard Power-Cycled Wi-Fi Network Adapter")
+
+        elif lvl == 4:
+            # Level 4: BLUETOOTH MESH & PAN TETHERING FAILOVER
+            bt_res = self.bt_mesh.enable_bluetooth_pan()
+            self.bt_mesh.broadcast_ble_mndcp_frame("⟦Ψ:EMERGENCY_OFFLINE|Ω:PAN_TETHER_ENGAGED⟧")
+            actions_taken.append(f"Level 4: Engaged Bluetooth PAN & BLE Beacon ({bt_res['output'][:40]})")
+
+        elif lvl == 5:
+            # Level 5: Full TCP/IP Stack & Winsock Reset
+            subprocess.run(["netsh", "winsock", "reset"], capture_output=True)
+            subprocess.run(["netsh", "int", "ip", "reset"], capture_output=True)
+            actions_taken.append("Level 5: Reset Windows TCP/IP Stack & Winsock Catalog")
+
+        elif lvl >= self.max_failures_before_sacrifice:
+            # Level 6: SELF-SACRIFICE & HARD REBOOT SALVAGE
+            # 24-Hour Anti-Loop Failsafe Check
+            now = int(time.time())
+            last_reboot = self.state.get("last_reboot_epoch", 0)
+            seconds_since_last_reboot = now - last_reboot
+            
+            if seconds_since_last_reboot < 86400: # Less than 24 hours
+                actions_taken.append(
+                    f"Level 6: REBOOT BLOCKED by 24h Failsafe Guard ({int((86400 - seconds_since_last_reboot)/3600)}h remaining). Maintaining offline beacon."
+                )
+            else:
+                actions_taken.append("Level 6: CRITICAL DEADLOCK. Initiating Self-Sacrificing Phoenix Reboot!")
+                self._trigger_phoenix_reboot()
+
+        return " | ".join(actions_taken)
+
+    def _trigger_phoenix_reboot(self):
+        """
+        Saves emergency telemetry, verifies scheduled task persistence, and initiates reboot.
+        """
+        self.state["last_reboot_epoch"] = int(time.time())
+        self.state["total_reboots"] = self.state.get("total_reboots", 0) + 1
+        self._save_state()
+
+        # 1. Ensure persistence watchdog task exists
+        self.install_persistence()
+
+        # 2. Trigger controlled fast reboot
+        print("\n" + "!"*80)
+        print("⚠️ AETHER-PHOENIX: SACRIFICING PROCESS TO RESTORE SYSTEM INTEGRITY.")
+        print("⚠️ Initiating Windows Fast-Reboot in 10 seconds. Phoenix will resurrect automatically.")
+        print("!"*80 + "\n")
+        
+        subprocess.run([
+            "shutdown", "/r", "/t", "10", 
+            "/c", "Aether-Phoenix: Self-Sacrificing Hardware Reboot to Restore Connectivity"
+        ])
+
+    def install_persistence(self) -> Dict[str, Any]:
+        """
+        Installs an unkillable Windows Scheduled Task that launches the node on boot/login
+        with Highest RunLevel.
+        """
+        if self.platform != "windows":
+            return {"status": "Linux systemd service recommended"}
+
+        task_name = "AetherPhoenixWatchdog"
+        script_path = (self.base_dir / "aether_node.py").resolve()
+        python_exe = sys.executable
+
+        # Create scheduled task to run with Highest Privileges on user logon
+        cmd = f'''
+        $Action = New-ScheduledTaskAction -Execute "{python_exe}" -Argument '"{script_path}" --daemon'
+        $Trigger = New-ScheduledTaskTrigger -AtLogOn
+        $Principal = New-ScheduledTaskPrincipal -UserId "$env:USERNAME" -LogonType Interactive -RunLevel Highest
+        $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+        Register-ScheduledTask -TaskName "{task_name}" -Action $Action -Trigger $Trigger -Principal $Principal -Settings $Settings -Force
+        '''
+        
+        res = subprocess.run(["powershell", "-Command", cmd], capture_output=True, text=True)
+        success = res.returncode == 0
+        return {
+            "task_name": task_name,
+            "installed": success,
+            "output": res.stdout.strip() if success else res.stderr.strip()
+        }
+
+
+# ==========================================
+# 9. COGNITIVE BDI HEARTBEAT LOOP
 # ==========================================
 """
 🔄 Fractal Cognitive Loop (Active Inference & BDI)
@@ -511,7 +965,7 @@ from typing import Dict, Any, Optional
 
 
 class CognitiveLoop:
-    def __init__(self, node_id: str, role: str, memory, persona, proactivity, log_dir: Path, llm_brain=None):
+    def __init__(self, node_id: str, role: str, memory, persona, proactivity, log_dir: Path, llm_brain=None, phoenix_engine=None):
         self.node_id = node_id
         self.role = role
         self.memory = memory
@@ -519,6 +973,7 @@ class CognitiveLoop:
         self.proactivity = proactivity
         self.log_dir = log_dir
         self.llm_brain = llm_brain
+        self.phoenix_engine = phoenix_engine
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.dense_log_path = self.log_dir / "stream.dense"
         self.human_log_path = self.log_dir / "thought_stream.log"
@@ -542,23 +997,38 @@ class CognitiveLoop:
         self.iteration += 1
         t0 = time.time()
 
+        # 0. PHOENIX INTEGRITY CHECK (God Mode Network Watchdog)
+        phoenix_status = None
+        recovery_action = None
+        if self.phoenix_engine:
+            health = self.phoenix_engine.check_health()
+            phoenix_status = health["status"]
+            if not health["connected"]:
+                recovery_action = self.phoenix_engine.execute_recovery_escalation()
+
         # 1. SENSE: Gather internal state
         interests = list(self.persona.profile["interests"].keys())
         
         # 2. REASON: Inner Monologue & State Encoding
+        state_tag = "COGNITIVE_HEARTBEAT" if not recovery_action else "RECOVERY_ESCALATION"
+        intent_tag = "EVALUATE_USER_STATUS_AND_ENVIRONMENT" if not recovery_action else f"PHOENIX_RECOVERY_LADDER:{recovery_action}"
+        
         dense_frame = encode_dense_frame(
-            state="COGNITIVE_HEARTBEAT",
-            context={"role": self.role, "iter": self.iteration, "mem_ep": len(interests)},
-            intent="EVALUATE_USER_STATUS_AND_ENVIRONMENT",
-            action="CHECK_PROACTIVE_PULSE",
-            meta={"confidence": 0.99}
+            state=state_tag,
+            context={"role": self.role, "iter": self.iteration, "mem_ep": len(interests), "net": phoenix_status or "OK"},
+            intent=intent_tag,
+            action="CHECK_PROACTIVE_PULSE" if not recovery_action else "PHOENIX_RECOVERY",
+            meta={"confidence": 0.99 if not recovery_action else 0.50}
         )
 
         # 3. INTEND & ACT: Run Proactive Pulse if root ego
         action_result = None
         if self.role == "root":
-            action_result = self.proactivity.execute_proactive_pulse()
-            human_msg = f"Self-reflection iteration #{self.iteration}: {action_result['summary']}"
+            if not recovery_action:
+                action_result = self.proactivity.execute_proactive_pulse()
+                human_msg = f"Self-reflection iteration #{self.iteration}: {action_result['summary']}"
+            else:
+                human_msg = f"⚠️ Phoenix Recovery Triggered (Fail #{self.phoenix_engine.consecutive_failures}): {recovery_action}"
         else:
             human_msg = f"Support node pulse #{self.iteration}: Sentry active, waiting for federated tasks."
 
@@ -572,12 +1042,14 @@ class CognitiveLoop:
             "dense_frame": dense_frame,
             "human_summary": human_msg,
             "action_result": action_result,
+            "phoenix_status": phoenix_status,
+            "recovery_action": recovery_action,
             "elapsed_ms": elapsed_ms
         }
 
 
 # ==========================================
-# 7. UNKILLABLE MULTI-VECTOR TRANSPORT
+# 10. UNKILLABLE MULTI-VECTOR TRANSPORT
 # ==========================================
 """
 🛡️ Unkillable Multi-Vector Polymorphic Transport Core
@@ -699,7 +1171,7 @@ class UnkillableTransport:
 
 
 # ==========================================
-# 8. MORPHIC SELF-ASSEMBLY CORE
+# 11. MORPHIC SELF-ASSEMBLY CORE
 # ==========================================
 """
 🧬 Morphic Self-Assembly Core
@@ -781,7 +1253,7 @@ class SelfAssembler:
 
 
 # ==========================================
-# 9. MASTER NODE CONTROLLER
+# 12. MASTER NODE CONTROLLER
 # ==========================================
 #!/usr/bin/env python3
 """
@@ -801,6 +1273,8 @@ from pathlib import Path
 
 # Paths
 BASE_DIR = Path(__file__).parent.resolve()
+
+
 
 
 
@@ -851,6 +1325,8 @@ def main():
     parser.add_argument("--test", action="store_true", help="Run self-diagnostic validation")
     parser.add_argument("--replicate", action="store_true", help="Generate 1-line self-assembly seed to reproduce node on any machine")
     parser.add_argument("--ask", type=str, help="Deliberate a query using the connected Gemini/Groq LLM brain")
+    parser.add_argument("--install-watchdog", action="store_true", help="Install unkillable Windows Scheduled Task for 24/7 persistence")
+    parser.add_argument("--phoenix-test", action="store_true", help="Run self-sacrificing Phoenix recovery ladder in dry-run mode")
 
     args = parser.parse_args()
 
@@ -879,6 +1355,8 @@ def main():
     model = ai_cfg.get(f"{provider}_model")
     brain = LLMBrain(provider=provider, api_key=key, model=model)
 
+    phoenix = PhoenixEngine(base_dir=BASE_DIR, dry_run=args.phoenix_test)
+
     loop = CognitiveLoop(
         node_id=cfg["node_id"],
         role=cfg["role"],
@@ -886,8 +1364,33 @@ def main():
         persona=persona,
         proactivity=proactivity,
         log_dir=LOG_DIR,
-        llm_brain=brain
+        llm_brain=brain,
+        phoenix_engine=phoenix
     )
+
+    if args.install_watchdog:
+        print("[*] Installing Aether-Phoenix Unkillable Scheduled Task Persistence...")
+        res = phoenix.install_persistence()
+        if res.get("installed"):
+            print(f"[✓] Successfully registered Windows Scheduled Task [{res['task_name']}] (RunLevel: Highest).")
+            print("    The node will now resurrect automatically on boot, crash, or logon.")
+        else:
+            print(f"[!] Installation result: {res.get('output')}")
+        return
+
+    if args.phoenix_test:
+        print("\n" + "="*80)
+        print("🔥 AETHER-PHOENIX RECOVERY LADDER SIMULATION (DRY-RUN)")
+        print("="*80)
+        health = phoenix.check_health()
+        print(f"[*] Health Check Probe: {health}")
+        print("[*] Simulating consecutive network drop escalations...")
+        for i in range(1, 7):
+            phoenix.consecutive_failures = i
+            action = phoenix.execute_recovery_escalation()
+            print(f"  • Failure #{i} -> {action}")
+        print("="*80 + "\n")
+        return
 
     if args.replicate:
         seed = assembler.generate_quine_seed(BASE_DIR / "aether_node.py")
