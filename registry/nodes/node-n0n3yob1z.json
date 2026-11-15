@@ -3,7 +3,17 @@
   "role": "root",
   "status": "ONLINE",
   "tailscale_ip": "100.116.147.94",
-  "last_seen_epoch": 1794771004,
-  "last_seen_iso": "2026-11-15T19:30:04Z",
-  "dense_frame": "\u27e6\u03a8:COGNITIVE_HEARTBEAT|\u0393:role:root;iter:1;mem_ep:5|\u03a9:EVALUATE_USER_STATUS_AND_ENVIRONMENT|\u03a6:CHECK_PROACTIVE_PULSE|\u0394:1794771004|\u0398:0.99\u27e7"
+  "last_seen_epoch": 1794774318,
+  "last_seen_iso": "2026-11-15T20:25:18Z",
+  "location": {
+    "latitude": 45.5234,
+    "longitude": -122.6762,
+    "accuracy_meters": 5000.0,
+    "method": "IP_GEOLOCATION",
+    "city": "Portland",
+    "region": "Oregon",
+    "country": "US",
+    "timestamp": 1794774319
+  },
+  "dense_frame": "\u27e6\u03a8:COGNITIVE_HEARTBEAT|\u0393:role:root;iter:1;mem_ep:5;net:HEALTHY|\u03a9:EVALUATE_USER_STATUS_AND_ENVIRONMENT|\u03a6:CHECK_PROACTIVE_PULSE|\u0394:1794774318|\u0398:0.99\u27e7"
 }
