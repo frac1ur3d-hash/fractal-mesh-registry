@@ -1,0 +1,14 @@
+{
+  "node_id": "node-n0n3yob1z",
+  "role": "root",
+  "status": "ONLINE",
+  "tailscale_ip": "100.116.147.94",
+  "hostname": "N0N3YOB1Z",
+  "last_seen_epoch": 1794770939,
+  "last_seen_iso": "2026-11-15T19:28:59Z",
+  "mndcp_frame": "\u27e6\u03a8:ONLINE|\u0393:host:node-n0n3yob1z;os:windows;cpus:16|\u03a9:MESH_ROOT_ACTIVE|\u0394:1794770000|\u0398:1.00\u27e7",
+  "meta": {
+    "version": "1.0-MNDCP",
+    "hardware": "AMD64"
+  }
+}
