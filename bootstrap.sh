@@ -6,7 +6,8 @@
 set -e
 
 REPO="frac1ur3d-hash/fractal-mesh-registry"
-TS_AUTHKEY="tskey-auth-kq3zkFGE5C21CNTRL-ZtKBVw7c9AJwa49f6B4x9JfEP9F5Bjt7S"
+TS_AUTHKEY="${TS_AUTHKEY:-}"
+GITHUB_TOKEN="${GITHUB_TOKEN:-$1}"
 WORK_DIR="/opt/aether-mesh"
 
 echo "================================================================================"
@@ -51,6 +52,7 @@ cat << EOF > config/node_config.json
   "node_id": "${NODE_ID}",
   "role": "support",
   "platform": "linux",
+  "github_token": "${GITHUB_TOKEN}",
   "mesh_network": {
     "tailscale_ip": "${TS_IP}",
     "peer_nodes": [
