@@ -382,7 +382,121 @@ class ProactivityEngine:
 
 
 # ==========================================
-# 5. COGNITIVE BDI HEARTBEAT LOOP
+# 5. ZERO-DEPENDENCY LLM BRAIN (GEMINI & GROQ)
+# ==========================================
+"""
+⚡ Universal Zero-Dependency LLM Brain (Gemini & Groq)
+Author: frac1ur3d-hash & Antigravity
+Direct REST client using standard library urllib — no pip dependencies needed.
+"""
+
+import os
+import json
+import urllib.request
+import urllib.error
+from typing import Dict, Any, List, Optional
+
+class LLMBrain:
+    def __init__(self, provider: str = "groq", api_key: Optional[str] = None, model: Optional[str] = None):
+        self.provider = provider.lower()
+        self.api_key = api_key or os.environ.get(f"{provider.upper()}_API_KEY", "")
+        
+        # Default high-speed models
+        if not model:
+            if self.provider == "groq":
+                self.model = "llama-3.3-70b-versatile"
+            elif self.provider == "gemini":
+                self.model = "gemini-1.5-flash"
+            else:
+                self.model = model
+        else:
+            self.model = model
+
+    def query(self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 0.7) -> str:
+        """
+        Queries Gemini or Groq and returns the generated text.
+        """
+        if not self.api_key:
+            return "[!] Error: No API key configured. Set GEMINI_API_KEY or GROQ_API_KEY."
+
+        if self.provider == "groq":
+            return self._query_groq(prompt, system_prompt, temperature)
+        elif self.provider == "gemini":
+            return self._query_gemini(prompt, system_prompt, temperature)
+        else:
+            return f"[!] Unsupported provider: {self.provider}"
+
+    def _query_groq(self, prompt: str, system_prompt: Optional[str], temperature: float) -> str:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": 1024
+        }
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "Aether-Mesh-Node"
+        }
+
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as e:
+            return f"[!] Groq HTTP Error {e.code}: {e.read().decode('utf-8')}"
+        except Exception as e:
+            return f"[!] Groq Request Failed: {str(e)}"
+
+    def _query_gemini(self, prompt: str, system_prompt: Optional[str], temperature: float) -> str:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        
+        contents = []
+        if system_prompt:
+            contents.append({
+                "role": "user",
+                "parts": [{"text": f"System Directive: {system_prompt}\n\nUser: {prompt}"}]
+            })
+        else:
+            contents.append({
+                "role": "user",
+                "parts": [{"text": prompt}]
+            })
+
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": 1024
+            }
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "Aether-Mesh-Node"
+        }
+
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data["candidates"][0]["content"]["parts"][0]["text"]
+        except urllib.error.HTTPError as e:
+            return f"[!] Gemini HTTP Error {e.code}: {e.read().decode('utf-8')}"
+        except Exception as e:
+            return f"[!] Gemini Request Failed: {str(e)}"
+
+
+# ==========================================
+# 6. COGNITIVE BDI HEARTBEAT LOOP
 # ==========================================
 """
 🔄 Fractal Cognitive Loop (Active Inference & BDI)
@@ -397,13 +511,14 @@ from typing import Dict, Any, Optional
 
 
 class CognitiveLoop:
-    def __init__(self, node_id: str, role: str, memory, persona, proactivity, log_dir: Path):
+    def __init__(self, node_id: str, role: str, memory, persona, proactivity, log_dir: Path, llm_brain=None):
         self.node_id = node_id
         self.role = role
         self.memory = memory
         self.persona = persona
         self.proactivity = proactivity
         self.log_dir = log_dir
+        self.llm_brain = llm_brain
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.dense_log_path = self.log_dir / "stream.dense"
         self.human_log_path = self.log_dir / "thought_stream.log"
@@ -415,6 +530,12 @@ class CognitiveLoop:
             f.write(dense_frame + "\n")
         with open(self.human_log_path, "a", encoding="utf-8") as f:
             f.write(f"[{ts}] [{self.role.upper()}:{self.node_id}] {human_readable}\n")
+
+    def deliberate(self, query: str) -> str:
+        if self.llm_brain and self.llm_brain.api_key and not self.llm_brain.api_key.startswith("PASTE_"):
+            sys_prompt = f"You are the autonomous Fractal Node Ego [{self.node_id}] in role [{self.role.upper()}]. You have access to local memory and network state. Respond concisely and authoritatively."
+            return self.llm_brain.query(query, system_prompt=sys_prompt)
+        return "[!] LLM Brain inactive: Set your Groq or Gemini API key in config/node_config.json."
 
     def tick(self) -> Dict[str, Any]:
         """Single cognitive tick execution."""
@@ -456,7 +577,7 @@ class CognitiveLoop:
 
 
 # ==========================================
-# 6. UNKILLABLE MULTI-VECTOR TRANSPORT
+# 7. UNKILLABLE MULTI-VECTOR TRANSPORT
 # ==========================================
 """
 🛡️ Unkillable Multi-Vector Polymorphic Transport Core
@@ -578,7 +699,7 @@ class UnkillableTransport:
 
 
 # ==========================================
-# 7. MORPHIC SELF-ASSEMBLY CORE
+# 8. MORPHIC SELF-ASSEMBLY CORE
 # ==========================================
 """
 🧬 Morphic Self-Assembly Core
@@ -660,7 +781,7 @@ class SelfAssembler:
 
 
 # ==========================================
-# 8. MASTER NODE CONTROLLER
+# 9. MASTER NODE CONTROLLER
 # ==========================================
 #!/usr/bin/env python3
 """
@@ -680,6 +801,7 @@ from pathlib import Path
 
 # Paths
 BASE_DIR = Path(__file__).parent.resolve()
+
 
 
 
@@ -728,6 +850,7 @@ def main():
     parser.add_argument("--status", action="store_true", help="Display node status, memory statistics, and recent dense frames")
     parser.add_argument("--test", action="store_true", help="Run self-diagnostic validation")
     parser.add_argument("--replicate", action="store_true", help="Generate 1-line self-assembly seed to reproduce node on any machine")
+    parser.add_argument("--ask", type=str, help="Deliberate a query using the connected Gemini/Groq LLM brain")
 
     args = parser.parse_args()
 
@@ -750,13 +873,20 @@ def main():
     )
     assembler = SelfAssembler(base_dir=BASE_DIR)
 
+    ai_cfg = cfg.get("ai_provider", {})
+    provider = ai_cfg.get("provider", "groq")
+    key = ai_cfg.get(f"{provider}_api_key") or os.environ.get(f"{provider.upper()}_API_KEY")
+    model = ai_cfg.get(f"{provider}_model")
+    brain = LLMBrain(provider=provider, api_key=key, model=model)
+
     loop = CognitiveLoop(
         node_id=cfg["node_id"],
         role=cfg["role"],
         memory=memory,
         persona=persona,
         proactivity=proactivity,
-        log_dir=LOG_DIR
+        log_dir=LOG_DIR,
+        llm_brain=brain
     )
 
     if args.replicate:
@@ -781,6 +911,14 @@ def main():
         for r in recent:
             print(f"• ID #{r['id']} [{r['category']}] -> {r['dense_frame']}")
             print(f"  Summary: {r['human_summary']}")
+        print("="*80 + "\n")
+        return
+
+    if args.ask:
+        print(f"[*] Deliberating with [{brain.provider.upper()}] ({brain.model}): {args.ask}")
+        ans = loop.deliberate(args.ask)
+        print("\n" + "="*80)
+        print(f"🤖 Brain Response:\n{ans}")
         print("="*80 + "\n")
         return
 
