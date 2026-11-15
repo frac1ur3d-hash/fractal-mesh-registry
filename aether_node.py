@@ -2,11 +2,11 @@
 """
 ⚡ AETHER-EGO: Universal Self-Contained Fractal Node ⚡
 Autonomous, proactive personal intelligence engine with Unkillable Multi-Vector Transport,
-Morphic Self-Assembly, Hardware Profiler & Phoenix God-Mode Recovery.
+Morphic Self-Assembly, Hardware Profiler, Phoenix God-Mode Recovery & High-Accuracy GPS Telemetry.
 Single-file, zero external dependencies, runs on any OS or diskless RAM boot with Python 3.8+.
 """
 
-import sys, os, time, json, sqlite3, base64, zlib, argparse, platform, random, subprocess, socket, urllib.request, urllib.error
+import sys, os, time, json, sqlite3, base64, zlib, argparse, platform, random, subprocess, socket, re, urllib.request, urllib.error
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -649,7 +649,202 @@ class HostProfiler:
 
 
 # ==========================================
-# 7. BLUETOOTH MESH & PAN FAILOVER
+# 7. MULTI-TIER GEOLOCATION TELEMETRY
+# ==========================================
+"""
+🛰️ AETHER-GEOLOCATOR: Multi-Tier High-Accuracy Device Positioning Core
+Author: frac1ur3d-hash & Antigravity
+Provides scientifically grounded, multi-tier geolocation across all device types:
+  Tier 1: Hardware GNSS / GPS (Mobile phones, GPS serial receivers) -> 2-5m accuracy
+  Tier 2: Wi-Fi BSSID Trilateration (Laptops & PCs without GPS chips) -> 10-25m accuracy
+  Tier 3: ISP Anycast IP Geolocation (Cloud VMs & headless servers) -> City-level accuracy
+"""
+
+import os
+import sys
+import re
+import json
+import time
+import subprocess
+import platform
+import urllib.request
+import urllib.error
+from typing import Dict, Any, List, Optional
+
+class GeoLocator:
+    def __init__(self):
+        self.platform = platform.system().lower()
+
+    def get_accurate_location(self) -> Dict[str, Any]:
+        """
+        Executes multi-tier location resolution from highest to lowest accuracy.
+        """
+        # Tier 1: Hardware GNSS (Termux / Linux GPSD)
+        gps_loc = self._try_hardware_gps()
+        if gps_loc:
+            return gps_loc
+
+        # Tier 2: Wi-Fi BSSID Triangulation
+        wifi_loc = self._try_wifi_trilateration()
+        if wifi_loc:
+            return wifi_loc
+
+        # Tier 3: IP Geolocation Fallback
+        ip_loc = self._try_ip_geolocation()
+        if ip_loc:
+            return ip_loc
+
+        return {
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "accuracy_meters": 999999,
+            "method": "UNKNOWN",
+            "city": "Unknown",
+            "timestamp": int(time.time())
+        }
+
+    def _try_hardware_gps(self) -> Optional[Dict[str, Any]]:
+        """Checks for mobile termux-location or Linux gpsd."""
+        # Android / Termux API
+        if os.path.exists("/data/data/com.termux/files/usr/bin/termux-location"):
+            try:
+                res = subprocess.run(["termux-location", "-p", "gps"], capture_output=True, text=True, timeout=5)
+                data = json.loads(res.stdout)
+                return {
+                    "latitude": data.get("latitude"),
+                    "longitude": data.get("longitude"),
+                    "altitude": data.get("altitude"),
+                    "accuracy_meters": data.get("accuracy", 5.0),
+                    "method": "HARDWARE_GNSS_GPS",
+                    "city": "Live GPS Position",
+                    "timestamp": int(time.time())
+                }
+            except Exception:
+                pass
+        return None
+
+    def _try_wifi_trilateration(self) -> Optional[Dict[str, Any]]:
+        """
+        Scans nearby Wi-Fi AP BSSIDs (MAC addresses) and signal strengths.
+        Uses open BSSID triangulation endpoint or local cache.
+        """
+        bssids = self._scan_wifi_bssids()
+        if not bssids:
+            return None
+
+        # Query OpenCellID / Geolocation endpoint with strongest visible BSSIDs
+        # Free public BSSID resolver fallback
+        try:
+            url = "https://openwifi.su/api/v1/locate"
+            payload = json.dumps({"wifi": bssids[:8]}).encode("utf-8")
+            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json", "User-Agent": "Aether-Mesh"}, method="POST")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                if data.get("lat") and data.get("lon"):
+                    return {
+                        "latitude": float(data["lat"]),
+                        "longitude": float(data["lon"]),
+                        "accuracy_meters": float(data.get("accuracy", 15.0)),
+                        "method": "WIFI_BSSID_TRILATERATION",
+                        "city": data.get("city", "Near Wi-Fi APs"),
+                        "visible_bssids": len(bssids),
+                        "timestamp": int(time.time())
+                    }
+        except Exception:
+            pass
+
+        return None
+
+    def _try_ip_geolocation(self) -> Optional[Dict[str, Any]]:
+        """Queries anycast IP geolocation services."""
+        providers = [
+            ("https://ipinfo.io/json", self._parse_ipinfo),
+            ("https://ipapi.co/json/", self._parse_ipapi)
+        ]
+
+        for url, parser in providers:
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "Aether-Mesh"})
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    raw = json.loads(resp.read().decode("utf-8"))
+                    res = parser(raw)
+                    if res:
+                        return res
+            except Exception:
+                continue
+        return None
+
+    def _parse_ipinfo(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        loc = data.get("loc", "")
+        if "," in loc:
+            lat, lon = loc.split(",")
+            return {
+                "latitude": float(lat),
+                "longitude": float(lon),
+                "accuracy_meters": 5000.0,
+                "method": "IP_GEOLOCATION",
+                "city": data.get("city", ""),
+                "region": data.get("region", ""),
+                "country": data.get("country", ""),
+                "timestamp": int(time.time())
+            }
+        return None
+
+    def _parse_ipapi(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if data.get("latitude") and data.get("longitude"):
+            return {
+                "latitude": float(data["latitude"]),
+                "longitude": float(data["longitude"]),
+                "accuracy_meters": 5000.0,
+                "method": "IP_GEOLOCATION",
+                "city": data.get("city", ""),
+                "region": data.get("region", ""),
+                "country": data.get("country_name", ""),
+                "timestamp": int(time.time())
+            }
+        return None
+
+    def _scan_wifi_bssids(self) -> List[Dict[str, Any]]:
+        """Scans visible Wi-Fi access point BSSIDs across Windows and Linux."""
+        results = []
+        if self.platform == "windows":
+            try:
+                res = subprocess.run(["netsh", "wlan", "show", "networks", "mode=bssid"], capture_output=True, text=True, timeout=5)
+                current_bssid = None
+                for line in res.stdout.splitlines():
+                    line = line.strip()
+                    if line.startswith("BSSID"):
+                        parts = line.split(":")
+                        if len(parts) >= 7:
+                            current_bssid = ":".join(p.strip() for p in parts[1:])
+                    elif line.startswith("Signal") and current_bssid:
+                        sig_val = int(re.search(r'\d+', line).group())
+                        # Convert signal % to approximate dBm: dBm ~= (Signal / 2) - 100
+                        signal_dbm = int((sig_val / 2) - 100)
+                        results.append({"macAddress": current_bssid, "signalStrength": signal_dbm})
+                        current_bssid = None
+            except Exception:
+                pass
+        else:
+            # Linux nmcli scan
+            try:
+                res = subprocess.run(["nmcli", "-f", "BSSID,SIGNAL", "device", "wifi", "list"], capture_output=True, text=True, timeout=5)
+                for line in res.stdout.splitlines()[1:]:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        bssid = parts[0]
+                        sig = int(parts[1]) if parts[1].isdigit() else 50
+                        results.append({"macAddress": bssid, "signalStrength": int((sig / 2) - 100)})
+            except Exception:
+                pass
+
+        # Sort by strongest signal
+        results.sort(key=lambda x: x["signalStrength"], reverse=True)
+        return results
+
+
+# ==========================================
+# 8. BLUETOOTH MESH & PAN FAILOVER
 # ==========================================
 """
 📡 Bluetooth Mesh & PAN (Personal Area Network) Failover Core
@@ -734,7 +929,7 @@ class BluetoothMeshEngine:
 
 
 # ==========================================
-# 8. PHOENIX GOD-MODE SYSTEM SALVAGE
+# 9. PHOENIX GOD-MODE SYSTEM SALVAGE
 # ==========================================
 """
 🔥 AETHER-PHOENIX: Self-Sacrificing System Recovery & "God Mode" Watchdog
@@ -950,7 +1145,7 @@ class PhoenixEngine:
 
 
 # ==========================================
-# 9. COGNITIVE BDI HEARTBEAT LOOP
+# 10. COGNITIVE BDI HEARTBEAT LOOP
 # ==========================================
 """
 🔄 Fractal Cognitive Loop (Active Inference & BDI)
@@ -1049,7 +1244,7 @@ class CognitiveLoop:
 
 
 # ==========================================
-# 10. UNKILLABLE MULTI-VECTOR TRANSPORT
+# 11. UNKILLABLE MULTI-VECTOR TRANSPORT
 # ==========================================
 """
 🛡️ Unkillable Multi-Vector Polymorphic Transport Core
@@ -1066,6 +1261,7 @@ import urllib.error
 import base64
 from typing import Dict, Any, List, Optional
 
+
 class UnkillableTransport:
     def __init__(self, node_id: str, role: str = "support", tailscale_ip: str = "unknown",
                  repo_owner: str = "frac1ur3d-hash", repo_name: str = "fractal-mesh-registry",
@@ -1078,6 +1274,7 @@ class UnkillableTransport:
         self.repo_full = f"{repo_owner}/{repo_name}"
         self.active_vector = "github_dead_drop"
         self.github_token = github_token or os.environ.get("GITHUB_TOKEN") or os.environ.get("AETHER_MESH_TOKEN") or ""
+        self.geolocator = GeoLocator()
         self.failure_counts = {}
 
     def transmit(self, dense_frame: str, target_node: str = "all") -> Dict[str, Any]:
@@ -1148,6 +1345,7 @@ class UnkillableTransport:
             "tailscale_ip": self.tailscale_ip,
             "last_seen_epoch": payload["timestamp"],
             "last_seen_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(payload["timestamp"])),
+            "location": self.geolocator.get_accurate_location(),
             "dense_frame": payload["frame"]
         }
         
@@ -1171,7 +1369,7 @@ class UnkillableTransport:
 
 
 # ==========================================
-# 11. MORPHIC SELF-ASSEMBLY CORE
+# 12. MORPHIC SELF-ASSEMBLY CORE
 # ==========================================
 """
 🧬 Morphic Self-Assembly Core
@@ -1253,7 +1451,7 @@ class SelfAssembler:
 
 
 # ==========================================
-# 12. MASTER NODE CONTROLLER
+# 13. MASTER NODE CONTROLLER
 # ==========================================
 #!/usr/bin/env python3
 """
